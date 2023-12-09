@@ -1,42 +1,33 @@
+"use client"
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from 'next/router';  // Added to use useRouter for dynamic routing
-import { useEffect, useState } from "react";  // useState and useEffect to handle state
-
-import { getCurrentUser } from "@/lib/session";
-import { getProjectDetails } from "@/lib/actions"; // Assuming this is updated for MongoDB
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import Modal from "@/components/Modal";
 import RelatedProjects from "@/components/RelatedProjects";
-import { ProjectInterface } from "@/common.types";
 import ProjectActions from "@/components/ProjectActions";
 
 const Project = () => {
+  const [project, setProject] = useState(null);
   const router = useRouter();
-  const { id } = router.query; // Get id from the URL
-  const [projectDetails, setProjectDetails] = useState<ProjectInterface | null>(null);
-  const [session, setSession] = useState(null);
+  const { id } = router.query;
 
   useEffect(() => {
     const fetchProject = async () => {
-      if (id) {
-        const project = await getProjectDetails(id as string);
-        setProjectDetails(project);
-      }
-    };
-
-    const fetchSession = async () => {
-      const currentSession = await getCurrentUser();
-      setSession(currentSession);
+      if (!id) return;
+      const res = await fetch(`/api/project/${id}`);
+      const data = await res.json();
+      setProject(data);
     };
 
     fetchProject();
-    fetchSession();
   }, [id]);
 
-  if (!projectDetails)
-    return <p className="no-result-text">Failed to fetch project info</p>;
+  if (!project) {
+    return <p className="no-result-text">Loading...</p>;
+  }
 
-  const renderLink = () => `/profile/${projectDetails?.createdBy?.id}`;
+  const renderLink = () => `/profile/${project.createdBy.id}`;
 
   return (
     <Modal>
