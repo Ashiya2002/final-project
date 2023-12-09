@@ -1,51 +1,29 @@
-"use client";
+import { MongoClient, ObjectId } from 'mongodb';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { useRouter } from "next/navigation";
-import { deleteProject, fetchToken } from "@/lib/actions";
-import Image from "next/image";
-import Link from "next/link";
-import React, { useState } from "react";
+// Connect to MongoDB (replace with your connection logic)
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri);
 
-const ProjectActions = ({ projectId }: { projectId: string }) => {
-    const [isDeleting, setIsDeleting] = useState(false);
-    const router = useRouter();
-
-  const handleDeleteProject = async () => {
-    setIsDeleting(true);
-
-    const { token } = await fetchToken();
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    if (req.method !== 'DELETE') {
+        return res.status(405).end(); // Method Not Allowed
+    }
 
     try {
-      await deleteProject(projectId, token);
+        const projectId = req.query.projectId;
+        await client.connect();
+        const db = client.db('flexibble'); // Replace with your DB name
+        const result = await db.collection('project').deleteOne({ _id: new ObjectId(projectId as string) });
 
-      router.push("/");
+        if (result.deletedCount === 1) {
+            res.status(200).json({ message: 'Project deleted' });
+        } else {
+            throw new Error('Project not found');
+        }
     } catch (error) {
-      console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
     } finally {
-      setIsDeleting(false);
+        await client.close();
     }
-  };
-
-  return (
-    <>
-      <Link
-        href={`/edit-project/${projectId}`}
-        className="flexCenter edit-action_btn"
-      >
-        <Image src="/pencil.svg" width={15} height={15} alt="edit" />
-      </Link>
-
-      <button
-        type="button"
-        className={`flexCenter delete-action_btn ${
-          isDeleting ? "bg-gray" : "bg-primary-purple"
-        }`}
-        onClick={handleDeleteProject}
-      >
-        <Image src="/trash.svg" width={15} height={15} alt="delete" />
-      </button>
-    </>
-  );
-};
-
-export default ProjectActions;
+}
