@@ -1,41 +1,57 @@
-import { g, config, auth } from '@grafbase/sdk';
+import { graph, connector, config, auth } from '@grafbase/sdk';
 
-// @ts-ignore
-const User = g.model('User', {
-  name: g.string().length({ min: 2, max: 100 }),
-  email: g.string().unique(),
-  avatarUrl: g.url(),
-  description: g.string().length({ min: 2, max: 1000 }).optional(),
-  githubUrl: g.url().optional(),
-  linkedInUrl: g.url().optional(),
-  projects: g.relation(() => Project).list().optional(),
-}).auth((rules) => {
-  rules.public().read()
+// Create a standalone graph
+const g = graph.Standalone();
+
+// MongoDB connector configuration
+const mongo = connector.MongoDB('MongoDB', {
+  apiKey: g.env('MONGODB_API_KEY'),
+  url: g.env('MONGODB_API_URL'),
+  dataSource: g.env('MONGODB_DATASOURCE'),
+  database: g.env('MONGODB_DATABASE'),
 })
 
-// @ts-ignore
-const Project = g.model('Project', {
-  title: g.string().length({ min: 3 }),
-  description: g.string(),
-  image: g.url(),
-  liveSiteUrl: g.url(),
-  githubUrl: g.url(),
-  category: g.string().search(),
-  createdBy: g.relation(() => User),
-}).auth((rules) => {
-  rules.public().read()
-  rules.private().create().delete().update()
-})
+// Register the MongoDB connector as a data source
+g.datasource(mongo);
 
+// Define the User model
+mongo
+  .model('User', {
+    name: g.string(),
+    email: g.string().unique(),
+    avatarUrl: g.url(),
+    description: g.string().optional(),
+    githubUrl: g.url().optional(),
+    linkedInUrl: g.url().optional(),
+    // project: g.relation('Project').list().optional(), // Reference to Project model
+  })
+  .collection('users');
+
+// Define the Project model
+mongo
+  .model('Project', {
+    title: g.string(),
+    description: g.string(),
+    image: g.url(),
+    liveSiteUrl: g.url(),
+    githubUrl: g.url(),
+    category: g.string(),
+    // createdBy: g.relation('User'), // Reference to User model
+  })
+  .collection('project');
+
+// JWT authentication configuration
 const jwt = auth.JWT({
   issuer: 'grafbase',
-  secret:  g.env('NEXTAUTH_SECRET')
-})
+  secret: g.env('NEXTAUTH_SECRET'),
+});
 
+// Configure Grafbase project
 export default config({
-  schema: g,
+  graph: g,
   auth: {
     providers: [jwt],
-    rules: (rules) => rules.private()
+    rules: (rules) => rules.public(), // Update as needed for your auth strategy
   },
-})
+});
+
