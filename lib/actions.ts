@@ -163,10 +163,10 @@ const dbName = process.env.MONGODB_DB || 'myDatabase';
 // Create a new MongoClient
 const client = new MongoClient(uri);
 
-async function connectDB(): Promise<Db> {
+export const connectDB = async (): Promise<Db> => {
   await client.connect();
   return client.db(dbName);
-}
+};
 
 // Define interfaces for your data models
 interface Project {

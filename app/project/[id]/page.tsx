@@ -1,25 +1,32 @@
 import Image from "next/image";
 import Link from "next/link";
-
-import { getCurrentUser } from "@/lib/session";
-import { getProjectDetails } from "@/lib/actions";
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import Modal from "@/components/Modal";
 import RelatedProjects from "@/components/RelatedProjects";
-import { ProjectInterface } from "@/common.types";
 import ProjectActions from "@/components/ProjectActions";
 
-const Project = async ({ params: { id } }: { params: { id: string } }) => {
-  const session = await getCurrentUser();
-  const result = (await getProjectDetails(id)) as {
-    project?: ProjectInterface;
-  };
+const Project = () => {
+  const [project, setProject] = useState(null);
+  const router = useRouter();
+  const { id } = router.query;
 
-  if (!result?.project)
-    return <p className="no-result-text">Failed to fetch project info</p>;
+  useEffect(() => {
+    const fetchProject = async () => {
+      if (!id) return;
+      const res = await fetch(`/api/project/${id}`);
+      const data = await res.json();
+      setProject(data);
+    };
 
-  const projectDetails = result?.project;
+    fetchProject();
+  }, [id]);
 
-  const renderLink = () => `/profile/${projectDetails?.createdBy?.id}`;
+  if (!project) {
+    return <p className="no-result-text">Loading...</p>;
+  }
+
+  const renderLink = () => `/profile/${project.createdBy.id}`;
 
   return (
     <Modal>
